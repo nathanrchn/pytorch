@@ -30,6 +30,7 @@ from .activation import (
     Tanh,
     Tanhshrink,
     Threshold,
+    xIELU,
 )
 from .adaptive import AdaptiveLogSoftmaxWithLoss
 from .batchnorm import (
@@ -328,6 +329,7 @@ __all__ = [
     "ZeroPad1d",
     "ZeroPad2d",
     "ZeroPad3d",
+    "xIELU",
 ]
 
 # Please keep this list sorted

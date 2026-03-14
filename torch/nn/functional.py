@@ -1953,6 +1953,24 @@ See :class:`~torch.nn.PReLU` for more details.
 )
 
 
+def xielu(
+    input: Tensor,
+    alpha_p: Tensor,
+    alpha_n: Tensor,
+    beta: float = 0.5,
+    eps: float = -1e-6,
+) -> Tensor:
+    r"""Apply the xIELU (Xi Improved Exponential Linear Unit) activation function.
+
+    See :class:`~torch.nn.xIELU` for more details.
+    """
+    if has_torch_function_variadic(input, alpha_p, alpha_n):
+        return handle_torch_function(
+            xielu, (input, alpha_p, alpha_n), input, alpha_p, alpha_n, beta=beta, eps=eps
+        )
+    return torch._C._nn.xielu(input, alpha_p, alpha_n, beta, eps)
+
+
 def rrelu(
     input: Tensor,
     lower: float = 1.0 / 8,

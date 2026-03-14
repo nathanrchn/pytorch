@@ -58,6 +58,13 @@
 #include <ATen/ops/_prelu_kernel.h>
 #include <ATen/ops/_prelu_kernel_native.h>
 #include <ATen/ops/_prelu_kernel_backward_native.h>
+#include <ATen/ops/xielu_native.h>
+#include <ATen/ops/xielu_backward_native.h>
+#include <ATen/ops/clamp_max.h>
+#include <ATen/ops/exp.h>
+#include <ATen/ops/masked_fill.h>
+#include <ATen/ops/sum.h>
+#include <ATen/ops/where.h>
 #include <ATen/ops/relu6_native.h>
 #include <ATen/ops/relu_native.h>
 #include <ATen/ops/rrelu_native.h>
@@ -840,5 +847,45 @@ Tensor& log_sigmoid_backward_cpu_out(const Tensor& grad_output,
 
 DEFINE_DISPATCH(GeluKernel);
 DEFINE_DISPATCH(GeluBackwardKernel);
+
+Tensor xielu_cpu(
+  const Tensor& self,
+  const Tensor& alpha_p,
+  const Tensor& alpha_n,
+  const Scalar& beta,
+  const Scalar& eps) {
+auto s_ap = at::softplus(alpha_p);
+auto s_an = at::softplus(alpha_n);
+double eps_val = eps.to<double>();
+auto x_clamped = at::clamp_max(self, eps_val);
+auto pos = self * (s_ap * self + beta);
+auto neg = (s_an + beta) * (at::exp(x_clamped) - 1) - s_an * self;
+return at::where(self.gt(0), pos, neg);
+}
+
+std::tuple<Tensor, Tensor, Tensor> xielu_backward_cpu(
+  const Tensor& grad_output,
+  const Tensor& self,
+  const Tensor& alpha_p,
+  const Tensor& alpha_n,
+  const Scalar& beta,
+  const Scalar& eps) {
+double eps_val = eps.to<double>();
+auto s_ap = at::softplus(alpha_p);
+auto s_an = at::softplus(alpha_n);
+auto ds_ap = at::sigmoid(alpha_p);
+auto ds_an = at::sigmoid(alpha_n);
+auto x_clamped = at::clamp_max(self, eps_val);
+auto e = at::exp(x_clamped);
+auto below_eps = self.le(eps_val).to(self.dtype());
+
+auto grad_x_pos = grad_output * (2 * s_ap * self + beta);
+auto grad_x_neg = grad_output * ((s_an + beta) * e * below_eps - s_an);
+auto grad_x = at::where(self.gt(0), grad_x_pos, grad_x_neg);
+
+auto contrib_ap = (grad_output * ds_ap * self * self).masked_fill(self.le(0), 0).sum();
+auto contrib_an = (grad_output * ds_an * (e - 1 - self)).masked_fill(self.gt(0), 0).sum();
+return {grad_x, contrib_ap.reshape_as(alpha_p), contrib_an.reshape_as(alpha_n)};
+}
 
 }  // namespace at::native

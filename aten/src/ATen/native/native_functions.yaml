@@ -5250,6 +5250,18 @@
     MkldnnCPU: mkldnn_prelu_backward
     MPS: prelu_backward_mps
 
+- func: xielu(Tensor self, Tensor alpha_p, Tensor alpha_n, Scalar beta=0.5, Scalar eps=-1e-6) -> Tensor
+  python_module: nn
+  dispatch:
+    CPU: xielu_cpu
+    CUDA: xielu_cuda
+
+- func: xielu_backward(Tensor grad_output, Tensor self, Tensor alpha_p, Tensor alpha_n, Scalar beta, Scalar eps) -> (Tensor, Tensor, Tensor)
+  python_module: nn
+  dispatch:
+    CPU: xielu_backward_cpu
+    CUDA: xielu_backward_cuda
+
 - func: gelu.out(Tensor self, *, str approximate='none', Tensor(a!) out) -> Tensor(a!)
   structured: True
   structured_inherits: TensorIteratorBase

@@ -1648,6 +1648,73 @@ class PReLU(Module):
         return f"num_parameters={self.num_parameters}"
 
 
+class xIELU(Module):
+    r"""Apply the xIELU (Xi Improved Exponential Linear Unit) activation function.
+
+    .. math::
+        \text{xIELU}(x) =
+        \begin{cases}
+        x \cdot (\text{softplus}(\alpha_p) \cdot x + \beta), & x > 0 \\
+        (\beta + \text{softplus}(\alpha_n)) \cdot (\exp(\min(x, \varepsilon)) - 1)
+        - \text{softplus}(\alpha_n) \cdot x, & x \leq 0
+        \end{cases}
+
+    where :math:`\alpha_p` and :math:`\alpha_n` are learnable parameters and
+    :math:`\beta`, :math:`\varepsilon` are fixed hyperparameters.
+
+    Initializing :math:`\alpha_p = \alpha_n = 0` yields
+    :math:`\text{softplus}(0) = \ln 2 \approx 0.693`.
+
+    Args:
+        beta (float): scale for the positive and negative branches. Default: 0.5
+        eps (float): transition point between the exp and linear regions for
+            negative inputs. Default: -1e-6
+
+    Shape:
+        - Input: :math:`(*)`, any number of dimensions.
+        - Output: :math:`(*)`, same shape as input.
+
+    Attributes:
+        alpha_p (Tensor): learnable parameter for the positive branch.
+        alpha_n (Tensor): learnable parameter for the negative branch.
+
+    Examples::
+
+        >>> m = nn.xIELU()
+        >>> input = torch.randn(2, 3)
+        >>> output = m(input)
+    """
+
+    __constants__ = ["beta", "eps"]
+    beta: float
+    eps: float
+
+    def __init__(
+        self,
+        beta: float = 0.5,
+        eps: float = -1e-6,
+        device=None,
+        dtype=None,
+    ) -> None:
+        factory_kwargs = {"device": device, "dtype": dtype}
+        super().__init__()
+        self.beta = beta
+        self.eps = eps
+        self.alpha_p = Parameter(torch.empty((), **factory_kwargs))
+        self.alpha_n = Parameter(torch.empty((), **factory_kwargs))
+        self.reset_parameters()
+
+    def reset_parameters(self) -> None:
+        torch.nn.init.zeros_(self.alpha_p)
+        torch.nn.init.zeros_(self.alpha_n)
+
+    def forward(self, input: Tensor) -> Tensor:
+        return F.xielu(input, self.alpha_p, self.alpha_n, self.beta, self.eps)
+
+    def extra_repr(self) -> str:
+        return f"beta={self.beta}, eps={self.eps}"
+
+
 class Softsign(Module):
     r"""Applies the element-wise Softsign function.
 

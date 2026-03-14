@@ -2181,6 +2181,9 @@
   self: _masked_softmax_backward(grad, result, mask, dim)
   mask: non_differentiable
 
+- name: xielu(Tensor self, Tensor alpha_p, Tensor alpha_n, Scalar beta=0.5, Scalar eps=-1e-6) -> Tensor
+  self, alpha_p, alpha_n: "grad.defined() ? xielu_backward(grad, self, alpha_p, alpha_n, beta, eps) : std::tuple<Tensor, Tensor, Tensor>()"
+
 - name: _prelu_kernel(Tensor self, Tensor weight) -> Tensor
   self, weight: "grad.defined() ? _prelu_kernel_backward(grad, self, weight) : std::tuple<Tensor, Tensor>()"
   result: at::where(self_p >= 0, self_t, weight_p * self_t + weight_t * self_p)
